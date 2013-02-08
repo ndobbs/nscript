@@ -9,6 +9,8 @@
 #
 # 	* Fixed a bug that would proceed with the SSL cert update even
 #	if the location didn't exist, resulting in a broken config! 
+#	* Copy the ssl key instead of moving it from the backup dir to 
+#	working dir
 # 1/12/2011
 #       * Total rewrite of the orignal version that was written 1/12/2010
 #       * Cleaned up many issues with the overall logic of the program
@@ -293,7 +295,7 @@ sub bkp_update {
     if ( !-e "$ssl_dir/ssl.crt/$update.crt" ) {
         print "Moving certificate and bouncing web services...";
         system("mv $new_cert $ssl_dir/ssl.crt/$update.crt");
-        system("mv /backup/certs/$update.key.tmp $ssl_dir/ssl.key/$update.key");
+        system("cp /backup/certs/$update.key.tmp $ssl_dir/ssl.key/$update.key");
         system("chmod -R 400 $ssl_dir/ssl.crt $ssl_dir/ssl.key");
         system("restorecon -R $ssl_dir/ssl.crt $ssl_dir/ssl.key");
         system("service httpd restart");
