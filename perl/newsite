@@ -1,0 +1,328 @@
+#!/usr/bin/perl -w
+#------------------------------------------------------------------------
+#
+# This utilities purpose is soley for automating the tasks involved
+# with administering the Reverse Proxy
+# Written by Nate Dobbs 1/12/2011
+#
+# 1/12/2013
+#
+# 	* Fixed a bug that would proceed with the SSL cert update even
+#	if the location didn't exist, resulting in a broken config! 
+# 1/12/2011
+#       * Total rewrite of the orignal version that was written 1/12/2010
+#       * Cleaned up many issues with the overall logic of the program
+# 2/22/2011
+#       * Fixed a bug with SSL certificate paths
+#       * Fixed a bug with HOST/KEY mismatch for mod_proxy
+# 3/03/2011
+#   * Fixed a bug with passing values from subroutines
+# 8/30/2011
+#   * Removed multiple instances of ProxyRequests directive -
+#   * This feature was also disabled due to security concerns
+# 9/1/2011
+#   * Changed SSLCipherSuite for all SSL sites to a much more secure
+#    List of options in order to play nice with PCI audits
+#   * SSLProtocol -All +SSLv3 +TLSv1
+#   * SSLCipherSuite ALL:!aNULL:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM
+#   * Turned ProxyRequests off globally ( security reasons )
+#
+#
+#------------------------------------------------------------------------
+use strict;
+use Getopt::Long;
+my ( $non, $ssl, $remove, $update, $ip, $version, $help );
+my $date = `date +%d%m%y`;
+if ( @ARGV == 0 ) {
+    print "$0: Missing line argument:\n Try \"$0 -h\" for help\n";
+    exit 0;
+}
+
+# Setup GetOpts and reference their respective vars
+# s = option requires a string
+GetOptions(
+    'non=s'    => \$non,
+    'ssl=s'    => \$ssl,
+    'remove=s' => \$remove,
+    'update=s' => \$update,
+    'ip=s'     => \$ip,
+    version    => \$version,
+    help       => \$help
+);
+if ($help) {
+    display_help();
+}
+if ($non) {
+
+    # Create the directory for the apache logs
+    my $non_log_dir = "/var/log/httpd/$non";
+    system("mkdir $non_log_dir") unless ( -e "$non_log_dir" );
+
+    # Call the apache_build() subroutine to handle the rest of the build
+    apache_build($non);
+}
+if ($ssl) {
+
+    # Used to tell the apache_build subroutine to build the SSL site
+    my $ssl_yes  = 1;
+    my $logs_dir = "/var/log/httpd/$ssl";
+    system("mkdir $logs_dir") unless ( -e "$logs_dir" );
+
+    # call the apache_build() subroutine to finish the build
+    apache_build( $ssl, $ssl_yes );
+}
+if ($ip) {
+    build_ip($ip);
+}
+if ($update) {
+    bkp_update($update);
+}
+if ($version) {
+    version();
+}
+
+# --------------------------------------------------------------------------------------------------
+sub construct_filename
+
+# constructs a file-name given an integer from the 'findnext' subroutine. This enables the 'findnext'
+# routine to stay general
+# --------------------------------------------------------------------------------------------------
+{
+    my ($i) = @_;
+    return '/etc/sysconfig/network-scripts/ifcfg-bond0:' . $i;
+}
+
+# --------------------------------------------------------------------------------------------------
+sub findnext
+
+# the first and only parameter is a reference to a function which determines how a filename - is
+# constructed. we iterative from 1..N until we find a that a constructed filename does NOT - exist.
+# --------------------------------------------------------------------------------------------------
+{
+# receive the reference to a filename-construction routine. We're being general like this
+# so the code to properly form a filename is neatly located elsewhere.
+    my ($construct_ref) = @_;
+
+    # loop from 1..infinity if necessary
+    for ( my $i = 1 ; ; $i++ ) {
+
+   # call our filename-construction routine that was passed to us as a parameter
+        my $file_to_use = &$construct_ref($i);
+
+        # if it doesn't exist, then return it as the file to use
+        return $file_to_use if ( !-e $file_to_use );
+    }
+}
+
+sub version {
+    print "\n";
+    print "$0 version 2.0 by: Nate Dobbs\n";
+    print "\n";
+    exit 0;
+}
+
+sub display_help {
+    print "Usage: $0
+                -n hostname -- Add a non-SSL host\n
+                -s hostname -- Add a FQDN SSL host\n
+                -r hostname -- Remove a host\n
+                -u hostname -- Update a host's cert\n
+                -i IP       -- Add a new IP to the RP\n
+                -v          -- Version information\n
+                -h          -- Print this help info\n";
+    exit 0;
+}
+
+#-------------------------------------------------------------------------
+# This subroutine simply builds the next address to be used with the
+# domain's supplied IP address < recieved from comm >
+#
+sub build_ip {
+    #
+    #-------------------------------------------------------------------------
+    my $passed_ip = pop(@_);
+    my $held_host = $passed_ip;
+    print "Do you want to go ahead and add the IP for \"$passed_ip\"[Y/n]?";
+    my $user_input = (<>);
+    chomp($user_input);
+    $user_input = "y" if ( length($user_input) == 0 );
+    die "You must enter \"y\" to continue $!\n" unless $user_input =~ m/[Yy]/;
+    print "Please enter the IP for $passed_ip: ";
+    my $real_ip = (<>);
+    chomp($real_ip);
+
+    # Make sure the IP is typed properly
+    die "Invalid IP format: $!\n"
+      unless $real_ip =~ m/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
+
+    # Create the IP address entry
+    my $new_filename = findnext( \&construct_filename );
+    print "creating file: [$new_filename]\n";
+    system("touch $new_filename");
+    print
+"\n\nIP info updated, when you get your signed cert place the file on this server\n";
+    print "and run $0 -u <path_to_file>\n\n";
+
+    # dump your info into the newly created filename
+    my $device = $new_filename;
+    $device =~ s/.*ifcfg-//;
+    open IFCFG, "> $new_filename";
+    print IFCFG "# Address for $held_host\n";
+    print IFCFG "DEVICE=$device\n";
+    print IFCFG "BOOTPROTO=none\n";
+    print IFCFG "IPADDR=$real_ip\n";
+    print IFCFG "NETMASK=255.255.255.0\n";
+    print IFCFG "GATEWAY=199.189.60.1\n";
+    print IFCFG "ALIAS=yes";
+    close IFCFG;
+    system("/sbin/service network reload");
+    return $real_ip;
+}
+
+#-------------------------------------------------------------------------
+# This is the *heart* of the program, it takes the arguments supplied
+# and builds the reverse proxy site within the apache configuration files
+#
+sub apache_build {
+    #
+    #-------------------------------------------------------------------------
+    my $build_site  = shift(@_);
+    my $ssl         = pop(@_);
+    my $csr_bkp_dir = "/backup/ssl.csr";
+    my $key_bkp_dir = "/backup/ssl.key";
+    if ( $ssl == 1 ) {
+        my $ip = build_ip($build_site);
+
+        # Edit the httpd.conf file to supply the mod_rewrite redirect
+        open CONF, ">> /etc/httpd/conf/httpd.conf";
+        print CONF "<VirtualHost *>\n";
+        print CONF "ServerName $build_site\n";
+        print CONF "DocumentRoot /var/www/html/sites\n";
+        print CONF "ErrorLog logs/$build_site/error.log\n\n";
+        print CONF "RewriteEngine on\n";
+        print CONF "Redirect permanent / https://$build_site/\n\n";
+        print CONF "<Directory />\n";
+        print CONF "Options None\n";
+        print CONF "AllowOverride None\n";
+        print CONF "</Directory>\n\n";
+        print CONF "</VirtualHost>\n\n";
+        close CONF;
+
+        # Edit the ssl.conf file in order to setup the *real* RP site
+        open SSL, ">>/etc/httpd/conf.d/ssl.conf";
+        print SSL "<VirtualHost $ip:443>\n";
+        print SSL "DocumentRoot \"/var/www/html/sites\"\n";
+        print SSL "ServerName $build_site:443\n";
+        print SSL "ServerAdmin nate.dobbs\@ssfhs.org\n";
+        print SSL "ErrorLog logs/$build_site/ssl_error.log\n";
+        print SSL "TransferLog logs/$build_site/ssl_access.log\n\n";
+        print SSL "SSLEngine on\n";
+        print SSL "SSLProtocol -All +SSLv3 +TLSv1\n";
+        print SSL
+"SSLCipherSuite ALL:!aNULL:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM\n\n";
+        print SSL
+          "SSLCertificateFile /etc/httpd/conf/ssl/ssl.crt/$build_site.crt\n";
+        print SSL
+"SSLCertificateKeyFile /etc/httpd/conf/ssl/ssl.key/$build_site.key\n\n";
+        print SSL "<Files ~ \"\\.(cgi|shtml|phtml|php3?)\$\">\n";
+        print SSL "SSLOptions +StdEnvVars\n";
+        print SSL "</Files>\n\n";
+        print SSL "SetEnvIf User-Agent \".*MSIE.*\" \\\n";
+        print SSL "nokeepalive ssl-unclean-shutdown \\\n";
+        print SSL "downgrade-1.0 force-response-1.0\n\n";
+        print SSL "CustomLog logs/ssl_request_log \\\n";
+        print SSL
+          "\"\%t \%h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \\\"\%r\\\" \%b\"\n\n";
+        print SSL "SSLProxyEngine on\n";
+        print SSL "ProxyRequests off\n";
+        print SSL "RewriteEngine on\n\n";
+        print SSL "# URL is $build_site to https://$build_site\n\n";
+        print SSL "RewriteRule ^/(.*)\$ https://$build_site/\$1 [NC,P]\n";
+        print SSL "ProxyPassReverse / https://$build_site/\n\n";
+        print SSL "<Directory />\n";
+        print SSL "Options None\n";
+        print SSL "AllowOverride None\n";
+        print SSL "</Directory>\n\n";
+        print SSL "</VirtualHost>\n\n";
+        close SSL;
+
+        # Time to move the SSL cert in the proper dir
+        bkp_update($build_site);
+    }
+    else {
+    # If we've made it this far, we've logically determined this site is not SSL
+        print " Building non-SSL site\n";
+        open CONF, ">> /etc/httpd/conf/httpd.conf";
+        print CONF "<VirtualHost *>\n";
+        print CONF "ServerName $build_site\n";
+        print CONF "DocumentRoot /var/www/html/sites\n";
+        print CONF "ErrorLog logs/$build_site/error.log\n\n";
+        print CONF "ProxyRequests off\n";
+        print CONF "RewriteEngine on\n";
+        print CONF "RewriteRule ^/(.*)\$ http://$build_site/\$1 [NC,P]\n";
+        print CONF "ProxyPassReverse / http://$build_site/\n\n";
+        print CONF "<Directory />\n";
+        print CONF "Options None\n";
+        print CONF "AllowOverride None\n";
+        print CONF "</Directory>\n\n";
+        print CONF "</VirtualHost>\n\n";
+        close CONF;
+        print "Bouncing httpd services\n";
+        system("/sbin/service httpd restart");
+    }
+}
+
+#-------------------------------------------------------------------------
+# This subroutine backs up any existing certificates and updates the new
+# cert to their respective locations.
+sub bkp_update {
+    #
+    #-------------------------------------------------------------------------
+    my $update  = shift(@_);
+    my $bkp_dir = "/backup/certs";
+    my $ssl_dir = "/etc/httpd/conf/ssl";
+    print "Please enter the path to your new SSL cert for site \"$update\" :";
+    my $new_cert = (<>);
+    chomp($new_cert);
+    print "\n";
+    die "Cannot find the cert $new_cert => $!\n" unless ( -e $new_cert );
+	
+
+    # If the SSL file DOES NOT exist, this means no backup needs to be done
+    # With any of the Key's or CSR files that already exist
+    if ( !-e "$ssl_dir/ssl.crt/$update.crt" ) {
+        print "Moving certificate and bouncing web services...";
+        system("mv $new_cert $ssl_dir/ssl.crt/$update.crt");
+        system("mv /backup/certs/$update.key.tmp $ssl_dir/ssl.key/$update.key");
+        system("chmod -R 400 $ssl_dir/ssl.crt $ssl_dir/ssl.key");
+        system("restorecon -R $ssl_dir/ssl.crt $ssl_dir/ssl.key");
+        system("service httpd restart");
+        exit 0;
+    }
+
+    # If we've made it this far, this means we actually need a proper
+    # backup process put into place for the existing files
+    if ( -e "$ssl_dir/ssl.crt/$update.crt" ) {
+
+        # Certgen places the *new* files in their respective direcotories
+        # with *.tmp appended to the file names, this way we will simply
+        # Backup the original files *non* .tmp by moving them out of the
+        # working dir back to the /backup filesystem
+        # Move the existing files to the bkp_dir
+        system("mv $ssl_dir/ssl.crt/$update.crt $bkp_dir/$update.crt.$date");
+        system("mv $ssl_dir/ssl.csr/$update.csr $bkp_dir/$update.csr.$date");
+        system("mv $ssl_dir/ssl.key/$update.key $bkp_dir/$update.key.$date");
+
+        # Now we may safely move files to the proper dir's
+        system("mv $new_cert $ssl_dir/ssl.crt/$update.crt");
+        system("cp $bkp_dir/$update.csr.tmp $ssl_dir/ssl.csr/$update.csr");
+        system("cp $bkp_dir/$update.key.tmp $ssl_dir/ssl.key/$update.key");
+        print "Bouncing Apache services ...\n";
+        system("service httpd restart");
+        exit 0;
+    }
+    else {
+        die
+          "I can't find that cert, please make sure you typed it correctly!\n";
+    }
+}
