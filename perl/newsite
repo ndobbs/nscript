@@ -18,18 +18,18 @@
 #	working dir
 #
 # 9/1/2011
-#   * Changed SSLCipherSuite for all SSL sites to a much more secure
-#    List of options in order to play nice with PCI audits
-#   * SSLProtocol -All +SSLv3 +TLSv1
-#   * SSLCipherSuite ALL:!aNULL:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM
-#   * Turned ProxyRequests off globally ( security reasons )
+# 	* Changed SSLCipherSuite for all SSL sites to a much more secure
+# 	List of options in order to play nice with PCI audits
+#	* SSLProtocol -All +SSLv3 +TLSv1
+# 	* SSLCipherSuite ALL:!aNULL:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM
+# 	* Turned ProxyRequests off globally ( security reasons )
 #
 # 8/30/2011
-#   * Removed multiple instances of ProxyRequests directive -
-#   * This feature was also disabled due to security concerns
+# 	* Removed multiple instances of ProxyRequests directive -
+# 	* This feature was also disabled due to security concerns
 #
 # 3/03/2011
-#   * Fixed a bug with passing values from subroutines
+# 	* Fixed a bug with passing values from subroutines
 #
 # 2/22/2011
 #       * Fixed a bug with SSL certificate paths
