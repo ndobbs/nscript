@@ -9,23 +9,14 @@
 #
 #	* If the cert file existed in the prod dir, file copy would fail
 #	* Added '-r' option to cp in order to mitigate this issue
+#
 # 1/12/2013
 #
 # 	* Fixed a bug that would proceed with the SSL cert update even
 #	if the location didn't exist, resulting in a broken config! 
 #	* Copy the ssl key instead of moving it from the backup dir to 
 #	working dir
-# 1/12/2011
-#       * Total rewrite of the orignal version that was written 1/12/2010
-#       * Cleaned up many issues with the overall logic of the program
-# 2/22/2011
-#       * Fixed a bug with SSL certificate paths
-#       * Fixed a bug with HOST/KEY mismatch for mod_proxy
-# 3/03/2011
-#   * Fixed a bug with passing values from subroutines
-# 8/30/2011
-#   * Removed multiple instances of ProxyRequests directive -
-#   * This feature was also disabled due to security concerns
+#
 # 9/1/2011
 #   * Changed SSLCipherSuite for all SSL sites to a much more secure
 #    List of options in order to play nice with PCI audits
@@ -33,6 +24,21 @@
 #   * SSLCipherSuite ALL:!aNULL:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM
 #   * Turned ProxyRequests off globally ( security reasons )
 #
+# 8/30/2011
+#   * Removed multiple instances of ProxyRequests directive -
+#   * This feature was also disabled due to security concerns
+#
+# 3/03/2011
+#   * Fixed a bug with passing values from subroutines
+#
+# 2/22/2011
+#       * Fixed a bug with SSL certificate paths
+#       * Fixed a bug with HOST/KEY mismatch for mod_proxy
+#
+# 1/12/2011
+#
+#       * Total rewrite of the orignal version that was written 1/12/2010
+#       * Cleaned up many issues with the overall logic of the program
 #
 #------------------------------------------------------------------------
 use strict;
