@@ -8,7 +8,7 @@
 # 2/11/2013
 #
 #	* If the cert file existed in the prod dir, file copy would fail
-#	* Added '-r' option to cp in order to mitigate this issue
+#	* Added '-f' option to cp in order to mitigate this issue
 #
 # 1/12/2013
 #
