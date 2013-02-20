@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-
 require 'tk'
 hello = TkRoot.new
 TkLabel.new( hello ) do
