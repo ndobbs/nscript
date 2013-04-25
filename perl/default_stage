@@ -56,20 +56,20 @@ sub mail {
 
 my %account_records;
 
-$account_records{'x08'}{'firstname'} = "Mike";
-$account_records{'x08'}{'lastname'}  = "Alexa";
-$account_records{'x08'}{'shell'}     = "/bin/ksh";
-$account_records{'x08'}{'email'}     = "mike.alexa\@ssfhs.org";
+$account_records{'user1'}{'firstname'} = "user1";
+$account_records{'user1'}{'lastname'}  = "user1";
+$account_records{'user1'}{'shell'}     = "/bin/ksh";
+$account_records{'user1'}{'email'}     = "user1\@yoursite.com";
 
-$account_records{'x066644'}{'firstname'} = "Nate";
-$account_records{'x066644'}{'lastname'}  = "Dobbs";
-$account_records{'x066644'}{'shell'}     = "/bin/bash";
-$account_records{'x066644'}{'email'}     = "nate.dobbs\@ssfhs.org";
+$account_records{'user2'}{'firstname'} = "Nate";
+$account_records{'user2'}{'lastname'}  = "Dobbs";
+$account_records{'user2'}{'shell'}     = "/bin/bash";
+$account_records{'user2'}{'email'}     = "nate.dobbs\@yoursite.com";
 
-$account_records{'xpj'}{'firstname'} = "Scott";
-$account_records{'xpj'}{'lastname'}  = "Peckinpaugh";
-$account_records{'xpj'}{'shell'}     = "/bin/ksh";
-$account_records{'xpj'}{'email'}     = "scott.peckinpaugh\@ssfhs.org";
+$account_records{'user3'}{'firstname'} = "user3";
+$account_records{'user3'}{'lastname'}  = "user3";
+$account_records{'user3'}{'shell'}     = "/bin/ksh";
+$account_records{'user3'}{'email'}     = "user3\@yoursite.com";
 
 $account_records{'scripts'}{'firstname'} = "common";
 $account_records{'scripts'}{'lastname'}  = "scripts";
@@ -110,7 +110,7 @@ for my $acct ( keys %account_records ) {
 my $banner = "
 =========================================================================
 *                                                                       *
-*  Property of Sisters of St. Francis Health Services, Inc.             *
+*  Property of YourCompany Inc.				                *
 *                                                                       *
 *  Unauthorized use of this system is prohibited.  All individuals      *
 *  using this system are subject to having activity monitored/recorded. *
