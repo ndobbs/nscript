@@ -1,0 +1,154 @@
+#!/usr/bin/perl -w
+# Written by Nate Dobbs 12-9-08
+
+# The purpose of this script is to set global files and parameters for # all kickstarted servers VIA RHN Satellite
+
+# First declare your users to be built.
+use strict;
+
+#####################################################################
+# 		subs
+#####################################################################
+
+sub randomPassword {
+    my $password;
+    my $_rand;
+
+    my $password_length = $_[0];
+    if ( !$password_length ) {
+        $password_length = 10;
+    }
+
+    my @chars = split(
+        " ",
+        "a b c d e f g h i j k l m n o
+	p q r s t u v w x y z - _ % # 
+	0 1 2 3 4 5 6 7 8 9"
+    );
+
+    srand;
+
+    for ( my $i = 0 ; $i <= $password_length ; $i++ ) {
+        $_rand = int( rand 41 );
+        $password .= $chars[$_rand];
+    }
+    return $password;
+}
+
+sub mail {
+
+    # Pull the passed vars and throw them in @_
+
+    my ( $email, $fname, $passwd ) = @_;
+    my $subj = "New Linux Server";
+    my $mailmsg =
+"$_[1], your password is $passwd please login to $ENV{HOSTNAME} and change it.\n";
+
+    open( MAILPIPE, "|/bin/mailx -s \"$subj\" $_[0]" )
+      or die "Can't open pipe $!";
+    print MAILPIPE "$mailmsg\n";
+    close MAILPIPE;
+}
+
+#####################################################################
+# a HoH
+#####################################################################
+
+my %account_records;
+
+$account_records{'user1'}{'firstname'} = "user1";
+$account_records{'user1'}{'lastname'}  = "user1";
+$account_records{'user1'}{'shell'}     = "/bin/ksh";
+$account_records{'user1'}{'email'}     = "user1\@yoursite.com";
+
+$account_records{'user2'}{'firstname'} = "Nate";
+$account_records{'user2'}{'lastname'}  = "Dobbs";
+$account_records{'user2'}{'shell'}     = "/bin/bash";
+$account_records{'user2'}{'email'}     = "nate.dobbs\@yoursite.com";
+
+$account_records{'user3'}{'firstname'} = "user3";
+$account_records{'user3'}{'lastname'}  = "user3";
+$account_records{'user3'}{'shell'}     = "/bin/ksh";
+$account_records{'user3'}{'email'}     = "user3\@yoursite.com";
+
+$account_records{'scripts'}{'firstname'} = "common";
+$account_records{'scripts'}{'lastname'}  = "scripts";
+$account_records{'scripts'}{'shell'}     = "/sbin/nologin";
+
+# now iterate through the items in the hash
+
+for my $acct ( keys %account_records ) {
+
+    my $fname  = $account_records{$acct}{'firstname'};
+    my $lname  = $account_records{$acct}{'lastname'};
+    my $shell  = $account_records{$acct}{'shell'};
+    my $email  = $account_records{$acct}{'email'};
+    my $passwd = randomPassword();
+
+    #####################################################################
+    # Create each user
+    #####################################################################
+
+    print "Adding $acct - ($fname $lname):\n";
+    sleep 3;
+    system(" useradd -c \"$fname $lname\" -s $shell $acct");
+    system(
+"echo $passwd \| passwd $acct --stdin; chage -d 0 $acct;gpasswd -a $acct wheel"
+    );
+
+    # Only send an email to the people that have a valid 'email' field.
+    if ($email) {
+
+        # Pass values in each var to the mail(); subroutine
+        mail( $email, $fname, $passwd );
+    }
+}
+
+
+# Now prepare system for default login banner
+
+my $banner = "
+=========================================================================
+*                                                                       *
+*  Property of YourCompany Inc.				                *
+*                                                                       *
+*  Unauthorized use of this system is prohibited.  All individuals      *
+*  using this system are subject to having activity monitored/recorded. *
+*  Unauthorized activities will be reported to the proper authorities.  *
+*  Illegal use of this system will result in prosecution.               *
+*                                                                       *
+=========================================================================\n";
+
+# Create the login_banner file for sshd
+my $ssh_config     = "/etc/ssh/sshd_config";
+my $ssh_config_tmp = "/etc/ssh/sshd_config_tmp";
+my $banner_file    = "/etc/login_banner";
+
+system("touch /etc/login_banner");
+
+open( my $FILE, '>', $banner_file ) or die "Can't open $banner_file $!\n";
+print $FILE "$banner";
+close $FILE;
+
+open( my $IN,  '<', $ssh_config )     or die "Can't open $ssh_config $!\n";
+open( my $OUT, '>', $ssh_config_tmp ) or die "cant' Open test file %!\n";
+
+while ( my $line_to_parse = <$IN> ) {
+
+    # Match and replace the beginning of line that starts with # || B
+    if ( $line_to_parse =~ m/^#*Banner/ ) {
+
+        $line_to_parse = "Banner /etc/login_banner";
+
+    }
+
+    printf $OUT $line_to_parse;
+}
+
+close($IN);
+close($OUT);
+unlink $ssh_config;
+rename $ssh_config_tmp, $ssh_config;
+
+system("/sbin/service sshd restart");
+

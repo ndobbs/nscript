@@ -1,0 +1,108 @@
+#!/usr/bin/perl
+
+use strict;
+use LWP::Simple;
+use HTML::TokeParser;
+
+die " Usage: $0 category keyword\n Exmaple: $0 sys \"mac+mini\" \n Categories: \n sys == computers\n tls == tools\n bik == bike\n sad == system admin jobs\n " unless @ARGV;
+
+# This is the category
+my $cat = $ARGV[0] || "tls";
+
+# This is the keyword you are looking for...
+my $keyword =  $ARGV[1] || "surface+plate";
+
+# This is the output file.
+# ( WWW Data ) Directory if you want to host it
+my $html = "cl_crawler.html";
+
+# Define the arrays for each state to be passed into craigslist search,
+# by defining each state individually I can tailor my searches quicker.
+my %states = (
+#    Kentucky => [ qw(bgky cincinnati huntington lexington louisville westky) ],
+#    Tennessee => [ qw(memphis chattanooga knoxville nashville tricities) ],
+#    Illinois => [ qw(bn carbondale chambana chicago peoria quadcities rockford springfield stlouis) ],
+    Indiana => [ qw(bloomington evansville fortwayne indianapolis muncie southbend terrahaute tippecanoe) ],
+#    Michigan => [ qw(annarbor centralmich detroit flint grandrapids jxn kalamazoo lansing nmi saginaw southbend up) ],
+#    Ohio => [ qw(akroncanton athensohio cincinnati cleveland columbus dayton huntington limaohio mansfield parkersburg toledo wheeling youngstown) ],
+);
+
+sub get_craigs {
+
+    my $city = shift;
+
+    # Download the page using get();.
+    # my $content = get( "http://$city.craigslist.org/search/tls?query=$keyword" ) or die $!;
+    print "city == $city\n";
+    print "keyword == $keyword\n";
+    print "category == $cat\n";
+    print "http://$city.craigslist.org/search/$cat?query=$keyword \n";
+
+    my $content = get( "http://$city.craigslist.org/search/$cat?query=$keyword" ) or die $!;
+
+    # Split up the page blob into lines so that we can manipulate them.
+    my @lines = split(/\n/, $content);
+
+    foreach my $i (0 .. @lines)
+    {
+        # This is the key to the whole program, the returned listings are in rows
+        # This is the item listing.
+        # I tested this on bikes.
+#                <p class="row">
+#                        <span class="ih" id="images:3n63o53l45O25V35W4a8q669e2752037a111f.jpg">&nbsp;</span>
+#                         Aug 26 - <a href="http://auburn.craigslist.org/bik/1920996795.html">Gary Fisher Mountain Bike  -</a>
+#                         $950<font size="-1"> (Auburn, AL)</font> <span class="p"> pic</span><br class="c">
+#                </p>
+        if ((@lines[$i] =~ /href/) && (@lines[$i] =~ /$city/))
+        {
+            print "line == @lines[$i]\n";
+            my $line = @lines[$i];
+            print HTML "$line<br>\n";
+        }
+    }
+
+
+}
+
+#------------------------------------------------------------------------------
+# This didn't really have to be a subroutine, just cleaning things up and making
+# them modular.  Open the file.
+#------------------------------------------------------------------------------
+sub open_html_file {
+        open (HTML,">$html")
+        or die "Error: cant't open $html \n $!";
+}
+
+#------------------------------------------------------------------------------
+# Close the file.
+#------------------------------------------------------------------------------
+sub close_html_file {
+        close HTML or die "Error: can't close $html\n $!";
+}
+
+
+#------------------------------------------------------------------------------
+# Main.
+#------------------------------------------------------------------------------
+
+open_html_file();
+
+# Make html the header
+print HTML "<html>\n <head>\n <titel>CL Crawl</title>\n </head>\n <body>\n <br>\n\n" ;
+
+# Iterate through the hash of arrays
+foreach my $key ( keys %states )
+{
+    print HTML "<br>$key<br>\n";
+    foreach my $i ( 0 .. $#{ $states{$key} } )
+    {
+        print HTML"<br>$states{$key}[$i]<br>\n";
+        get_craigs($states{$key}[$i]);
+        sleep(5);
+    }
+        print "\n";
+}
+
+
+print HTML " </body>\n\n" ;
+close_html_file();
