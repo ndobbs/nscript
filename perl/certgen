@@ -1,0 +1,96 @@
+#!/usr/bin/perl -w
+##########################################################################
+#
+# This program is designed to take an 1 argument and create a CSR and KEY
+# File for SSL certificates
+# Written by Nate Dobbs 1/12/2010
+# 
+# 11/19/2012
+#
+#	* Removed 'Inc' from "Alverno Information Services" OC
+#
+# 5/24/2012
+#
+#	* Fixed spelling mistake for the word 'received' for user output
+#
+# 7/06/2011
+#
+#	* Changed name of CSR owner to Franciscan Alliance Inc
+# 	* Forcing RSA:2048-bit encryption for all future CSR's
+#
+# 1/07/2011
+#	* Created .tmp extensions on the csr, crt and key files
+#	* Created a process to *roll out* new certificates from thawte
+#
+#
+# 11/4/2010 - Split certgen from original "newsite" utility
+# 	* Fixed a bug with creating FQDN's 
+#       * No longer assuming the .ssfhs.org suffix 
+#  	* Added proper dates to the backup files	
+#
+#
+# usage: $0 <hostname.ssfhs.org>
+##########################################################################
+use strict;
+
+my $input = $ARGV[0];
+my $date = `date +%d%m%y`;
+
+	if (@ARGV == 0) {
+
+		print "Usage: $0 <hostname.ssfhs.org>\n";
+		
+		exit 0;
+	}
+
+chomp($input);
+
+	certgen($input);
+
+#########################################################################
+# Copied code from the newsite script, keeping this as a subroutine
+sub certgen 
+#
+##########################################################################
+{
+my $ssl = shift(@_);
+
+my $bkp_dir = "/backup/certs";
+
+	chdir "$bkp_dir";
+	
+	system("openssl genrsa -out $ssl.key.tmp &> /dev/null");
+	open OPENSSL, "| openssl req -new -nodes -newkey rsa:2048 -keyout $ssl.key.tmp -out $ssl.csr.tmp &> /dev/null";
+
+	print OPENSSL "US\n";
+	print OPENSSL "Indiana\n";
+	print OPENSSL "Indianapolis\n";
+	print OPENSSL "YOUR COMPANY\n";
+	print OPENSSL "Organazational Unit\n";
+	print OPENSSL "$ssl\n";
+	print OPENSSL "certificate.administrator\@yourdomain.com\n";
+	print OPENSSL "your_key_phrase\n";
+	print OPENSSL ".\n";
+
+	close OPENSSL;
+
+	print "\n\n";
+	print " Here is your CSR:\n\n";
+	system("cat $ssl.csr.tmp");
+	print "\n\n Please see the following wiki article for the submission process\n";
+	print " https://your_wiki_url/wiki_unix/index.php/Reverse_Proxy\n\n";
+
+
+	# place proper SElinux security contexts
+
+	system("restorecon -R /etc/httpd/conf/ssl $bkp_dir");
+	system("chmod -R 400 $bkp_dir");
+
+	# Move the files to the bkp_dir for a backup
+	# Append a date stamp for recovery purposes
+
+	print "When you receive the signed cert, place it on this server and run newsite -u to complete the install\n\n";
+
+
+}
+
