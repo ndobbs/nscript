@@ -16,12 +16,6 @@ ping_remote_host() {
 	ping -c $PING_COUNT $PING_HOST  | while read pong; do echo "$(date): $pong" 1>>$LOG_FILE; done
 }
 
-# If the results file does not exist, create it
-
-if [ ! -f $LOG_FILE ]; then
-	mkdir $LOG_FILE
-fi
-
 # Call the function
 
 ping_remote_host
