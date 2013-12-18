@@ -2,7 +2,9 @@
 # Script takes 1 arg ( host you want to ping )
 # Results file is called ping_results.txt will be written to users homedir
 # Script is expected to be run by cron at N interval for a duration of 24/48 hours
+#
 # Usage: ./dls_ping google.com
+#
 
 PING_HOST=$1
 LOG_FILE="$HOME/ping_results.txt"
