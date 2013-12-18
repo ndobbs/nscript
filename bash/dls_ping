@@ -2,6 +2,7 @@
 # Script takes 1 arg ( host you want to ping )
 # Results file is called ping_results.txt will be written to users homedir
 # Script is expected to be run by cron at N interval for a duration of 24/48 hours
+# Usage: ./dls_ping google.com
 
 PING_HOST=$1
 LOG_FILE="$HOME/ping_results.txt"
@@ -9,10 +10,10 @@ PING_COUNT='100'
 
 
 ping_remote_host() {
-	ping -c $PING_COUNT $PING_HOST  | while read pong; do echo "$(date): $pong" 1>$LOG_FILE; done
+	ping -c $PING_COUNT $PING_HOST  | while read pong; do echo "$(date): $pong" 1>>$LOG_FILE; done
 }
 
-# If the results dir does not exist, create it
+# If the results file does not exist, create it
 
 if [ ! -f $LOG_FILE ]; then
 	mkdir $LOG_FILE
