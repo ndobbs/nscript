@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# Wrap around the 'say' command in order to allow Eli to learn his letters and numbers
+function saywrap() {
+/usr/bin/say $1
+}
+
+saywrap

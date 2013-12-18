@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# Recursively scan directory and count each line in every file
+
+for file in `find $1 -type f`
+	do cat $file
+	done | echo "There are `wc -l` lines in all of the files in $1"
